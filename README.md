@@ -17,7 +17,7 @@ The interface is in French and the map covers mainland France.
 
 ## Project status
 
-| | |
+| | | 
 |---|---|
 | Planning, profile, stages, weather | Done |
 | Phone layout | Done |
