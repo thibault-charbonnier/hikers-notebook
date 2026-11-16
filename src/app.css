@@ -1,0 +1,319 @@
+/* Global styles: colour palette from the design mock-up, page reset, map dot. */
+
+:root {
+  --bg: #f4f1e8;
+  --panel: #fbf9f3;
+  --border: #ddd6c4;
+  --text: #1f2a24;
+  --muted: #5b6660;
+  --accent: #2f5d46;
+  --accent-soft: #e6efe8;
+  --position: #3a6ea5;
+  --font-body: "Inter Variable", system-ui, sans-serif;
+  --font-title: "Space Grotesk Variable", system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  overscroll-behavior: none; /* no pull-to-refresh while panning the map on a phone */
+}
+
+/* Phone: zoom with two fingers, and keep the bottom corners of the map above the sheet. */
+@media (max-width: 720px) {
+  .maplibregl-ctrl-top-right {
+    display: none;
+  }
+
+  .maplibregl-ctrl-bottom-left,
+  .maplibregl-ctrl-bottom-right {
+    bottom: 68px;
+  }
+}
+
+/* Information card of a parcours on the overview map (see src/lib/parcoursCard.ts). */
+.parcours-card .maplibregl-popup-content {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-family: var(--font-body);
+}
+
+.parcours-card.hover .maplibregl-popup-content {
+  pointer-events: none;
+}
+
+.parcours-card .card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 232px;
+}
+
+.parcours-card .card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+  font-family: var(--font-title);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.parcours-card .card-swatch {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--border);
+}
+
+.parcours-card .card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.parcours-card .card-type {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.parcours-card .card-icon {
+  display: inline-flex;
+}
+
+.parcours-card .card-stagebar {
+  flex: 1;
+  min-width: 18px;
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+
+.parcours-card .card-stagebar .piece {
+  flex: 1;
+  border-radius: 3px;
+  background: var(--stage-color);
+}
+
+.parcours-card .card-stagebar .piece.p1 {
+  background:
+    repeating-linear-gradient(45deg, var(--stage-color) 0 2px, transparent 2px 5px),
+    color-mix(in srgb, var(--stage-color) 22%, white);
+}
+
+.parcours-card .card-stagebar .piece.p2 {
+  background:
+    repeating-linear-gradient(-45deg, var(--stage-color) 0 2px, transparent 2px 5px),
+    color-mix(in srgb, var(--stage-color) 22%, white);
+}
+
+.parcours-card .card-stagecount {
+  flex: none;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+/* The three figures sit on one line, with no boxes. */
+.parcours-card .card-figures {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parcours-card .card-figure-value {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.parcours-card .card-figure-label {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.parcours-card .card-figure.up .card-figure-value {
+  color: #2a6a45;
+}
+
+.parcours-card .card-figure.down .card-figure-value {
+  color: #8c3a1b;
+}
+
+.parcours-card .card-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.parcours-card .card-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #eef1ee;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.parcours-card .card-chip.done {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.parcours-card .card-rating {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b07a00;
+}
+
+.parcours-card .card-open {
+  width: 100%;
+  min-height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.parcours-card .card-open:hover {
+  background: #244a38;
+}
+
+/* Small spinning circle, shown next to "Calcul en cours…". */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Numbered point markers (see src/components/PointMarkers.svelte). */
+.point-marker {
+  box-sizing: border-box;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* A stage point is a rounded square instead of a circle. */
+.point-marker.stage {
+  border-radius: 8px;
+}
+
+.point-marker.start {
+  background: var(--accent);
+}
+
+.point-marker.end {
+  background: #d6246e;
+}
+
+/* Points of interest and comments (see src/components/PoiMarkers.svelte). */
+.poi-marker {
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid var(--pin-color);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  color: var(--pin-color);
+  cursor: pointer;
+}
+
+/* A comment is a filled bubble, so it stands out from the points of interest. */
+.poi-marker.comment {
+  border-radius: 10px 10px 10px 2px;
+  background: var(--pin-color);
+  color: #fff;
+}
+
+/* Bubbles opened from the markers. */
+.point-hover .maplibregl-popup-content {
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.point-hover p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.point-editor .maplibregl-popup-content {
+  width: 280px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+/* The blue dot showing the user's position (see src/lib/location.ts). */
+.user-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--position);
+  border: 3px solid #fff;
+  box-shadow:
+    0 0 0 6px rgba(58, 110, 165, 0.25),
+    0 1px 4px rgba(0, 0, 0, 0.4);
+}
