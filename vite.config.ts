@@ -3,7 +3,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { devStorage } from "./server/devStorage";
 
 // `base: "./"` keeps asset paths relative, so the built site works from any
-// sub-folder (e.g. https://<user>.github.io/rando-map/).
+// sub-folder (e.g. https://<user>.github.io/hikers-notebook/).
 export default defineConfig({
   base: "./",
   // `devStorage` lets the development server save parcours in the `data/` folder.

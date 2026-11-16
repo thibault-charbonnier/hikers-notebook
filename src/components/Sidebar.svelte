@@ -42,7 +42,7 @@
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 23 L11 9 L16 17 L19 12 L25 23 Z" />
         </svg>
-        <span>Mon carnet de rando</span>
+        <span>Hiker's Notebook</span>
       </div>
 
       <nav aria-label="Navigation principale">

@@ -1,4 +1,4 @@
-# Mon carnet de rando
+# Hiker's Notebook
 
 A small tool to plan your hikes in France on a computer, then check them on your phone while hiking, even without a network connection.
 
@@ -44,3 +44,11 @@ The app then opens at `http://localhost:5173`. For now, hikes are saved in a loc
 - Outline of France: IGN Admin Express, via [france-geojson](https://github.com/gregoiredavid/france-geojson)
 - Weather forecasts: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0)
 - Sunrise and sunset: computed locally with [SunCalc](https://github.com/mourner/suncalc)
+
+## Contact
+
+Thibault Charbonnier — [thib.charbonnier@gmail.com](mailto:thib.charbonnier@gmail.com)
+
+## License
+
+The code is released under the [MIT License](LICENSE). The map data and forecasts above keep their own licenses.
