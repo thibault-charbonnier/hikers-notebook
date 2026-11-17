@@ -22,8 +22,8 @@ The interface is in French and the map covers mainland France.
 | Planning, profile, stages, weather | Done |
 | Phone layout | Done |
 | Hosting, user accounts, online saving | In progress |
-| Install as an app and use offline, offline maps | Planned |
-| GPX export | Planned |
+| Install as an app, offline mode (download a hike and its map) | In testing |
+| GPX export, delete a hike | Done |
 
 ## Try it at home
 
@@ -34,7 +34,7 @@ npm install
 npm run dev
 ```
 
-The app then opens at `http://localhost:5173`. For now, hikes are saved in a local `data/` folder.
+The app then opens at `http://localhost:5173`. Accounts and saved hikes live in a [Supabase](https://supabase.com) database, so you need an invitation code to create an account.
 
 ## Sources and credits
 

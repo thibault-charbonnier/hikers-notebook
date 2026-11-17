@@ -60,7 +60,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  width: 232px;
+  width: min(232px, calc(100vw - 64px));
 }
 
 .parcours-card .card-title {
@@ -300,8 +300,13 @@ body {
   color: var(--muted);
 }
 
+/* Popups sit above the floating bars of the map, and never wider than a phone screen. */
+.maplibregl-popup {
+  z-index: 6;
+}
+
 .point-editor .maplibregl-popup-content {
-  width: 280px;
+  width: min(280px, calc(100vw - 32px));
   padding: 14px;
   border-radius: 12px;
 }

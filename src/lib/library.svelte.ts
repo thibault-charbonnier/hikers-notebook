@@ -38,7 +38,11 @@ class Library {
   labels = $state.raw<Label[]>([]);
   /** Parcours selected on the overview map (highlighted in the menu). */
   selectedId = $state<string | null>(null);
-  /** False if the storage cannot be reached (for instance outside ``npm run dev``). */
+  /** Parcours whose options window (offline, GPX, delete) is open, if any. */
+  optionsFor = $state.raw<ParcoursSummary | null>(null);
+  /** Parcours whose offline window (download, update, remove) is open, if any. */
+  offlineFor = $state.raw<ParcoursSummary | null>(null);
+  /** False if the storage cannot be reached (for instance without internet). */
   available = $state(true);
 
   filters = $state<Filters>({ types: [], labels: [], km: null, stages: null });
@@ -95,6 +99,17 @@ class Library {
 
   resetFilters(): void {
     this.filters = { types: [], labels: [], km: null, stages: null };
+  }
+
+  /** Forget everything (when someone logs out). */
+  reset(): void {
+    this.items = [];
+    this.labels = [];
+    this.selectedId = null;
+    this.optionsFor = null;
+    this.offlineFor = null;
+    this.available = true;
+    this.resetFilters();
   }
 
   /** Read the parcours and labels from the storage. */

@@ -4,7 +4,11 @@
   and a folding, resizable details panel on the right.
 
   On a phone the right panel becomes a sheet that slides up from the bottom, the
-  hike bar spans the top and the tool palette floats on the left.
+  hike bar spans the top with the tool palette right under it (on the left), the
+  action bar (offline, GPX, delete) sits at the bottom left above the scale and
+  the layers button alone at the bottom right. On a computer the tool palette is
+  at the top left, the action bar at the bottom left (above the scale) and the
+  layers button at the bottom right.
 
   The map is limited to France (the only place with detailed IGN data, the
   rest is dimmed), and points cannot be placed outside it. The user's position
@@ -16,6 +20,8 @@
   import BottomSheet from "../components/BottomSheet.svelte";
   import CommentDialog from "../components/CommentDialog.svelte";
   import DetailsPanel from "../components/DetailsPanel.svelte";
+  import HikeActions from "../components/HikeActions.svelte";
+  import LayersButton from "../components/LayersButton.svelte";
   import MapTools from "../components/MapTools.svelte";
   import PoiMarkers from "../components/PoiMarkers.svelte";
   import PointMarkers from "../components/PointMarkers.svelte";
@@ -30,8 +36,13 @@
   import { showUserLocation } from "../lib/location";
   import { createMap, fitBoundsAndSettle } from "../lib/map";
   import { pinInfo } from "../lib/poi";
+  import { createCompass, disableTerrain, enableTerrain, TILT_DEGREES } from "../lib/terrain";
+  import { ui } from "../lib/ui.svelte.js";
   import { viewport } from "../lib/viewport.svelte.js";
-  import { addFranceMask, IGN_ATTRIBUTION, IGN_STYLE_URL } from "../lib/mapStyles";
+  import { addFranceMask, aerialStyle, capPlanIgnZoom, IGN_ATTRIBUTION, IGN_STYLE_URL } from "../lib/mapStyles";
+  import { connection } from "../lib/online.svelte.js";
+  import { addOverlayLayers, syncOverlays } from "../lib/overlays";
+  import type { BaseMapId } from "../lib/mapLayers";
   import { addRouteLayers, setRouteColor, updateRoute } from "../lib/routeLayer";
 
   /** Saved parcours to open (from the address), or ``null`` to keep the current one. */
@@ -40,6 +51,8 @@
   let container: HTMLDivElement;
   let map = $state.raw<MapLibreMap>();
   let mapReady = $state(false);
+  /** Goes up each time a style has been loaded, so what depends on the style is drawn again. */
+  let styleVersion = $state(0);
   let panelOpen = $state(true);
   let panelWidth = $state(440);
   let panelResizing = $state(false);
@@ -48,25 +61,42 @@
 
   onMount(() => {
     loadFrance();
+    // The style is set right after, so it can be adjusted as it loads (see capPlanIgnZoom).
+    // A page opened while the 3D view is on starts already tilted: tilting it afterwards would interrupt
+    // the framing of the parcours.
     const instance = createMap(container, {
-      style: IGN_STYLE_URL,
       maxZoom: 18,
       attributionControl: false,
+      pitch: ui.viewMode === "3d" ? TILT_DEGREES : 0,
     });
+    loadBaseMap(instance, wantedBase);
+    shownBase = wantedBase;
     instance.addControl(new AttributionControl({ customAttribution: IGN_ATTRIBUTION }));
     instance.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
-    instance.on("load", () => {
+    // Fires for the first style and again for any later one (a new base map wipes
+    // everything added on top of it): so the overlays are put back each time.
+    instance.on("style.load", () => {
+      addOverlayLayers(instance); // above the base map, below the mask and the route
       addFranceMask(instance);
       addRouteLayers(instance);
+      if (ui.viewMode === "3d") enableTerrain(instance, false);
       mapReady = true;
+      styleVersion++;
     });
     // Left click places a point with the "add" tool; right click always does.
     instance.on("click", (event) => {
       if (hike.tool === "add") hike.addPoint(event.lngLat.lng, event.lngLat.lat);
       else if (hike.tool === "poi") placePin(event.lngLat.lng, event.lngLat.lat);
     });
-    instance.on("contextmenu", (event) => hike.addPoint(event.lngLat.lng, event.lngLat.lat));
+    // In 3D a right-click drag turns the map: the click that ends such a drag must not place a point.
+    let lastTurnEnd = 0;
+    instance.on("rotateend", () => (lastTurnEnd = Date.now()));
+    instance.on("pitchend", () => (lastTurnEnd = Date.now()));
+    instance.on("contextmenu", (event) => {
+      if (Date.now() - lastTurnEnd < 500) return;
+      hike.addPoint(event.lngLat.lng, event.lngLat.lat);
+    });
     const hideBrowserMenu = (event: Event) => event.preventDefault();
     container.addEventListener("contextmenu", hideBrowserMenu);
 
@@ -82,10 +112,62 @@
 
   // Redraw the route whenever it changes, in the colour of the parcours.
   $effect(() => {
+    void styleVersion;
     if (map && mapReady) updateRoute(map, hike.route);
   });
   $effect(() => {
+    void styleVersion;
     if (map && mapReady) setRouteColor(map, hike.routeColor);
+  });
+
+  // The base map chosen in the layers window. Only the Plan IGN can be saved for offline use,
+  // so without network that is the one shown (what was chosen is remembered for later).
+  const wantedBase = $derived<BaseMapId>(connection.online ? ui.baseMap : "plan-ign");
+  let shownBase: BaseMapId = "plan-ign";
+
+  /** Load a base map into the map: its style replaces the old one, then ``style.load`` puts the overlays and the route back. */
+  function loadBaseMap(instance: MapLibreMap, id: BaseMapId): void {
+    if (id === "aerial") instance.setStyle(aerialStyle(), { diff: false });
+    else instance.setStyle(IGN_STYLE_URL, { transformStyle: capPlanIgnZoom, diff: false });
+  }
+
+  $effect(() => {
+    const instance = map;
+    const wanted = wantedBase;
+    if (!instance || wanted === shownBase) return;
+    shownBase = wanted;
+    untrack(() => loadBaseMap(instance, wanted));
+  });
+
+  // Overlays: switched on and off, and faded, as chosen (and hidden without network).
+  $effect(() => {
+    void styleVersion;
+    const choices = ui.overlays;
+    const allowed = connection.online;
+    if (map && mapReady) syncOverlays(map, choices, allowed);
+  });
+
+  // 2D or 3D, as chosen in the layers window.
+  $effect(() => {
+    const instance = map;
+    const mode = ui.viewMode;
+    if (!instance || !mapReady) return;
+    untrack(() => {
+      if (mode === "3d") enableTerrain(instance);
+      else if (instance.getTerrain()) disableTerrain(instance);
+    });
+  });
+
+  // The compass is only useful in 3D, where the map can be turned.
+  $effect(() => {
+    const instance = map;
+    if (!instance || ui.viewMode !== "3d") return;
+    const compass = createCompass();
+    instance.addControl(compass, "top-right");
+    return () => {
+      // Leaving the page removes the whole map, and with it the compass: removing it a second time fails.
+      if (instance.hasControl(compass)) instance.removeControl(compass);
+    };
   });
 
   // Open the saved parcours named in the address, then frame it on the map.
@@ -154,6 +236,8 @@
     <div class="map" bind:this={container}></div>
     <TopBar />
     <MapTools />
+    <HikeActions />
+    <LayersButton />
     <Toast />
     {#if !viewport.phone || hike.tool !== "move"}
       <p class="hint">
@@ -255,12 +339,12 @@
     pointer-events: none;
   }
 
-  /* Phone: the hint sits just above the closed sheet, to the right of the tool palette. */
+  /* Phone: the hint sits just above the closed sheet, between the tool palette and the action bar. */
   @media (max-width: 720px) {
     .hint {
       bottom: 104px;
       left: 68px;
-      right: 12px;
+      right: 70px;
       transform: none;
       border-radius: 14px;
       white-space: normal;

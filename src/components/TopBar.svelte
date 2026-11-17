@@ -2,12 +2,20 @@
   Floating card at the top of the planning map: colour, name and type of the
   parcours, its labels, and a "Détails" section (description, done or not,
   date, rating and comment). Also holds the save button.
+
+  On a phone the type switch (walk, hike, trek) moves into the details, to
+  keep the card short. The description grows with its text (up to 10 lines),
+  and so does the comment on how the hike went (up to 5 lines).
 -->
 <script lang="ts">
   import { saveHike } from "../lib/actions";
   import { hike } from "../lib/hike.svelte.js";
   import { library } from "../lib/library.svelte.js";
+  import { connection } from "../lib/online.svelte.js";
   import { PARCOURS_TYPES } from "../lib/parcours";
+  import { autosize } from "../lib/autosize";
+  import { ui } from "../lib/ui.svelte.js";
+  import { viewport } from "../lib/viewport.svelte.js";
   import ColorPicker from "./ColorPicker.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import StarRating from "./StarRating.svelte";
@@ -18,8 +26,27 @@
   let saving = $state(false);
   let colorRoot = $state<HTMLDivElement>();
   let nameField = $state<HTMLTextAreaElement>();
+  let bar = $state<HTMLDivElement>();
 
-  const canSave = $derived(hike.points.length >= 2 && !hike.loading && hike.dirty && !saving);
+  // Tell the rest of the page whether the details are open (on a phone the floating buttons hide then).
+  $effect(() => {
+    ui.detailsOpen = detailsOpen;
+    return () => (ui.detailsOpen = false);
+  });
+
+  // Tell the rest of the page where this bar ends, so the tool palette can sit
+  // right under it on a phone (the bar grows with a long name or open details).
+  $effect(() => {
+    const element = bar;
+    if (!element) return;
+    const report = () => (ui.topBarBottom = element.offsetTop + element.offsetHeight);
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
+
+  const canSave = $derived(hike.points.length >= 2 && !hike.loading && hike.dirty && !saving && connection.online);
   const status = $derived(hike.dirty ? "Modifications non enregistrées" : hike.isSaved ? "✓ Enregistré" : "");
 
   /** Make the name field as tall as its text: one line, or two when the name is long. */
@@ -61,7 +88,24 @@
   }}
 />
 
-<div class="bar">
+{#snippet typeToggle()}
+    <div class="types" role="radiogroup" aria-label="Type de parcours">
+      {#each PARCOURS_TYPES as info (info.id)}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={hike.type === info.id}
+          class:active={hike.type === info.id}
+          onclick={() => (hike.type = info.id)}
+        >
+          <TypeIcon type={info.id} />
+          <span>{info.label}</span>
+        </button>
+      {/each}
+    </div>
+{/snippet}
+
+<div class="bar" bind:this={bar}>
   <div class="row">
     <a class="back" href="#/" aria-label="Retour à la vue générale" title="Vue générale">
       <svg width="18" height="18" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
@@ -101,20 +145,9 @@
       }}
     ></textarea>
 
-    <div class="types" role="radiogroup" aria-label="Type de parcours">
-      {#each PARCOURS_TYPES as info (info.id)}
-        <button
-          type="button"
-          role="radio"
-          aria-checked={hike.type === info.id}
-          class:active={hike.type === info.id}
-          onclick={() => (hike.type = info.id)}
-        >
-          <TypeIcon type={info.id} />
-          <span>{info.label}</span>
-        </button>
-      {/each}
-    </div>
+    {#if !viewport.phone}
+      {@render typeToggle()}
+    {/if}
 
     <button type="button" class="save" disabled={!canSave} onclick={save}>
       {saving ? "Enregistrement…" : "Enregistrer"}
@@ -145,7 +178,16 @@
 
   {#if detailsOpen}
     <div class="details">
-      <textarea rows="2" aria-label="Description du parcours" placeholder="Description…" bind:value={hike.description}></textarea>
+      {#if viewport.phone}
+        {@render typeToggle()}
+      {/if}
+      <textarea
+        rows="2"
+        aria-label="Description du parcours"
+        placeholder="Description…"
+        bind:value={hike.description}
+        use:autosize={{ value: hike.description, maxLines: 10 }}
+      ></textarea>
 
       <label class="done">
         <input type="checkbox" bind:checked={hike.done} onchange={onDoneChange} />
@@ -162,7 +204,13 @@
             />
             <StarRating value={hike.rating} onchange={(rating) => (hike.rating = rating)} />
           </div>
-          <textarea rows="2" aria-label="Commentaire sur la réalisation" placeholder="Comment ça s'est passé…" bind:value={hike.doneComment}></textarea>
+          <textarea
+            rows="2"
+            aria-label="Commentaire sur la réalisation"
+            placeholder="Comment ça s'est passé…"
+            bind:value={hike.doneComment}
+            use:autosize={{ value: hike.doneComment, maxLines: 5 }}
+          ></textarea>
         </div>
       {/if}
     </div>
@@ -423,8 +471,10 @@
     font-size: 14px;
   }
 
+  /* These fields grow with their text (see autosize.ts): no handle, and a set line height to count lines. */
   textarea {
-    resize: vertical;
+    resize: none;
+    line-height: 1.4;
   }
 
   .done {
@@ -485,6 +535,11 @@
     .types {
       order: 3;
       flex-basis: 100%;
+    }
+
+    /* Inside the details, the type switch comes first. */
+    .details .types {
+      order: -1;
     }
 
     .types button {

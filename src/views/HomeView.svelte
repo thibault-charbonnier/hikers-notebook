@@ -6,19 +6,24 @@
   fewer layers, so it stays fast. Hover a parcours for its card, click it (or
   pick it in the side menu) to select it and open it.
 
+  The zoom buttons are at the bottom left; the account button (see
+  AccountMenu.svelte) is at the top right, on the map.
+
   On a phone the side menu is a sheet at the bottom (the list of parcours) and
   a round "+" button at the bottom right starts a new parcours; a band with the
-  name of the app runs along the top; picking a parcours in the list opens it.
+  name of the app runs along the top, with the account button just under it, on
+  the map; picking a parcours in the list opens it.
 -->
 <script lang="ts">
   import { Popup, type Map as MapLibreMap } from "maplibre-gl";
   import { onMount } from "svelte";
   import { goToParcours, prepareNewPlanning } from "../lib/actions";
+  import AccountMenu from "../components/AccountMenu.svelte";
   import BottomSheet from "../components/BottomSheet.svelte";
   import ParcoursList from "../components/ParcoursList.svelte";
   import { addParcoursLayers, boundsOf, HIT_LAYER, routeOf, updateParcours } from "../lib/homeRoutes";
   import { library } from "../lib/library.svelte.js";
-  import { createMap, fitBoundsAndSettle } from "../lib/map";
+  import { createMap, fitBoundsAndSettle, keepPopupInView } from "../lib/map";
   import { homeStyle } from "../lib/mapStyles";
   import { buildParcoursCard } from "../lib/parcoursCard";
   import { viewport } from "../lib/viewport.svelte.js";
@@ -36,7 +41,8 @@
   }
 
   onMount(() => {
-    const instance = createMap(container, { style: homeStyle(), maxZoom: 9 });
+    // Zoom buttons at the bottom left, next to the side menu; none on a phone (two fingers).
+    const instance = createMap(container, { style: homeStyle(), maxZoom: 9 }, viewport.phone ? null : "bottom-left");
 
     instance.on("load", () => {
       addParcoursLayers(instance);
@@ -92,7 +98,10 @@
 
     hideHover();
     const line = routeOf(item);
-    fitBoundsAndSettle(instance, boundsOf(item), { padding: { top: 90, bottom: 90, left: 90, right: 90 }, maxZoom: 9 });
+    const settled = fitBoundsAndSettle(instance, boundsOf(item), {
+      padding: { top: 90, bottom: 90, left: 90, right: 90 },
+      maxZoom: 9,
+    });
     const popup = new Popup({ closeButton: true, closeOnClick: false, offset: 12, maxWidth: "300px", className: "parcours-card" })
       .setLngLat(line[Math.floor(line.length / 2)])
       .setDOMContent(buildParcoursCard(item, () => goToParcours(item.id)))
@@ -101,10 +110,22 @@
       if (library.selectedId === item.id) library.selectedId = null;
     });
     pinnedPopup = popup;
+    // Once the map has settled, nudge it so the whole card is visible (clear of the bars and the sheet).
+    settled.then(() =>
+      keepPopupInView(
+        instance,
+        popup,
+        viewport.phone
+          ? { top: 120, bottom: 90, left: 8, right: 8 }
+          : { top: 70, bottom: 16, left: 16, right: 60 },
+      ),
+    );
   });
 </script>
 
 <div class="map" bind:this={container}></div>
+
+<div class="account-corner"><AccountMenu /></div>
 
 {#if viewport.phone}
   <header class="band">
@@ -114,7 +135,7 @@
     </svg>
     <span>Hiker's Notebook</span>
   </header>
-  <a class="add" href="#/planifier" aria-label="Planifier un parcours" title="Planifier un parcours" onclick={prepareNewPlanning}>
+  <a class="add" href="#/hike" aria-label="Planifier un parcours" title="Planifier un parcours" onclick={prepareNewPlanning}>
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
          stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
   </a>
@@ -154,6 +175,20 @@
 
   .band span {
     color: var(--text);
+  }
+
+  /* Top right of the map, where the zoom buttons used to be (on a phone: just under the band). */
+  .account-corner {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 5;
+  }
+
+  @media (max-width: 720px) {
+    .account-corner {
+      top: 62px;
+    }
   }
 
   /* Above the closed sheet and the map credits. */

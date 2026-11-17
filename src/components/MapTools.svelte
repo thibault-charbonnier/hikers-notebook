@@ -1,11 +1,13 @@
 <!--
   Floating tool palette on the map: move the map (hand), place points
   (target), undo and redo. Right-clicking the map always places a point,
-  whatever the tool.
+  whatever the tool. On a phone it hides while the hike details are open.
 -->
 <script lang="ts">
   import { hike } from "../lib/hike.svelte.js";
   import { COMMENT, POI_TYPES, type PinType } from "../lib/poi";
+  import { ui } from "../lib/ui.svelte.js";
+  import { viewport } from "../lib/viewport.svelte.js";
   import PoiIcon from "./PoiIcon.svelte";
 
   let menuOpen = $state(false);
@@ -20,7 +22,13 @@
   }
 </script>
 
-<div class="tools" role="toolbar" aria-label="Outils de la carte">
+{#if !(viewport.phone && ui.detailsOpen)}
+<div
+  class="tools"
+  role="toolbar"
+  aria-label="Outils de la carte"
+  style:--top-bar-bottom="{ui.topBarBottom}px"
+>
   <button
     type="button"
     class:active={hike.tool === "move"}
@@ -133,6 +141,7 @@
     </svg>
   </button>
 </div>
+{/if}
 
 <style>
   .tools {
@@ -254,17 +263,14 @@
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 
-  /* Phone: bottom left, above the map scale and the closed sheet; the menu opens upwards. */
+  /* Phone: top left, right under the hike bar, whatever its height (see TopBar.svelte). */
   @media (max-width: 720px) {
     .tools {
-      top: auto;
-      bottom: 104px;
+      top: calc(var(--top-bar-bottom, 190px) + 8px);
       left: 8px;
     }
 
     .flyout {
-      top: auto;
-      bottom: 0;
       width: min(272px, calc(100vw - 90px));
     }
   }

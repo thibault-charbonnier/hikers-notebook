@@ -51,7 +51,7 @@
         </a>
       </nav>
 
-      <a href="#/planifier" class="cta" aria-current={route === "plan" ? "page" : undefined} onclick={prepareNewPlanning}>
+      <a href="#/hike" class="cta" aria-current={route === "plan" ? "page" : undefined} onclick={prepareNewPlanning}>
         + Planifier un parcours
       </a>
     </div>

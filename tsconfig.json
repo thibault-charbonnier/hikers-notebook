@@ -3,13 +3,27 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "strict": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "svelte", "node"]
+    "types": [
+      "vite/client",
+      "svelte",
+      "node"
+    ],
+    "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "server/**/*.ts", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "plugins/**/*.ts",
+    "vite.config.ts"
+  ]
 }

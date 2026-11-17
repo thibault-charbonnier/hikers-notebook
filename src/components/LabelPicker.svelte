@@ -3,6 +3,7 @@
   create a new one with a name and a colour.
 -->
 <script lang="ts">
+  import { feedback } from "../lib/feedback.svelte.js";
   import { hike } from "../lib/hike.svelte.js";
   import { library } from "../lib/library.svelte.js";
   import { BASIC_COLORS } from "../lib/parcours";
@@ -29,7 +30,7 @@
     deleting = null;
     if (!name) return;
     if (await library.deleteLabel(name)) hike.forgetLabel(name);
-    else hike.notify("Le label n'a pas pu être supprimé : lance l'appli avec « npm run dev ».");
+    else feedback.problem("supprimer le label");
   }
 
   async function create(): Promise<void> {
@@ -38,9 +39,7 @@
     hike.addLabel(name);
     draft = "";
     open = false;
-    if (!(await library.addLabel(name, color))) {
-      hike.notify("Le label n'a pas pu être enregistré : lance l'appli avec « npm run dev ».");
-    }
+    if (!(await library.addLabel(name, color))) feedback.problem("enregistrer le label");
   }
 </script>
 

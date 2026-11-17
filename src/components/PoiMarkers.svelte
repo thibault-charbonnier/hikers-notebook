@@ -11,6 +11,7 @@
   import { Marker, Popup, type Map as MapLibreMap } from "maplibre-gl";
   import { mount, onDestroy, unmount } from "svelte";
   import { hike } from "../lib/hike.svelte.js";
+  import { keepPopupInView, planPopupInsets } from "../lib/map";
   import { pinInfo } from "../lib/poi";
   import PoiEditor from "./PoiEditor.svelte";
 
@@ -64,6 +65,7 @@
       .setDOMContent(container)
       .addTo(map);
     const component = mount(PoiEditor, { target: container, props: { poiId: id, onclose: () => popup.remove() } });
+    keepPopupInView(map, popup, planPopupInsets()); // never cut off by the screen edge or the bars
     popup.on("close", () => {
       unmount(component);
       if (editor?.popup === popup) editor = null;

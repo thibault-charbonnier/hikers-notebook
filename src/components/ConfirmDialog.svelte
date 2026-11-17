@@ -1,18 +1,22 @@
 <!--
   Small question in the middle of the screen, with a dark backdrop. Escape or
-  a click outside cancels.
+  a click outside cancels. The confirm button is red by default (for deletions)
+  or green with ``tone="primary"`` (for harmless actions such as a download).
 -->
 <script lang="ts">
   let {
     title,
     message,
     confirmLabel,
+    tone = "danger",
     onconfirm,
     oncancel,
   }: {
     title: string;
     message: string;
     confirmLabel: string;
+    /** "danger" (red button) for something that cannot be undone, "primary" (green) otherwise. */
+    tone?: "danger" | "primary";
     onconfirm: () => void;
     oncancel: () => void;
   } = $props();
@@ -32,7 +36,7 @@
     <p id="confirm-message">{message}</p>
     <div class="actions">
       <button type="button" class="cancel" onclick={oncancel}>Annuler</button>
-      <button type="button" class="danger" onclick={onconfirm}>{confirmLabel}</button>
+      <button type="button" class={tone} onclick={onconfirm}>{confirmLabel}</button>
     </div>
   </div>
 </div>
@@ -95,6 +99,12 @@
   .danger {
     border: none;
     background: #c0392b;
+    color: #fff;
+  }
+
+  .primary {
+    border: none;
+    background: var(--accent);
     color: #fff;
   }
 </style>

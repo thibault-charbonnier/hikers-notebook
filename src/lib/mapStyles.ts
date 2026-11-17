@@ -9,6 +9,7 @@
  *   contains contour lines and hiking paths.
  */
 
+import { AERIAL_TILES } from "./mapLayers";
 import type {
   GeoJSONSourceSpecification,
   LayerSpecification,
@@ -19,6 +20,68 @@ import type {
 /** Official IGN style (BD TOPO): contour lines, paths, relief. No API key. */
 export const IGN_STYLE_URL =
   "https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/standard.json";
+
+/** Deepest zoom of the Plan IGN tiles the app asks for (deeper views enlarge these tiles). */
+const PLAN_IGN_MAX_TILE_ZOOM = 16;
+
+/**
+ * Change the Plan IGN style as it is loaded, so the map never asks for tiles
+ * deeper than zoom 16.
+ *
+ * These are vector tiles (drawings), so a zoom-16 tile stays sharp when the
+ * view goes further in, and there is almost nothing more in zoom 17 and 18.
+ * Stopping at 16 lets the offline download save a few hundred tiles instead
+ * of a few thousand. The address of the tiles is kept; the separate "TileJSON"
+ * file of the source is dropped, because it would put the limit back to 18.
+ *
+ * Use it with ``map.setStyle(IGN_STYLE_URL, { transformStyle: capPlanIgnZoom })``.
+ *
+ * Parameters
+ * ----------
+ * _previous : StyleSpecification or undefined
+ *     The style being replaced (unused).
+ * next : StyleSpecification
+ *     The style that has just been downloaded.
+ *
+ * Returns
+ * -------
+ * StyleSpecification
+ *     The style to use.
+ */
+export function capPlanIgnZoom(_previous: StyleSpecification | undefined, next: StyleSpecification): StyleSpecification {
+  const source = next.sources["plan_ign"];
+  if (source && source.type === "vector") {
+    const { url, ...rest } = source;
+    next.sources["plan_ign"] = { ...rest, minzoom: 0, maxzoom: PLAN_IGN_MAX_TILE_ZOOM };
+  }
+  return next;
+}
+
+/**
+ * Style of the aerial photos of the IGN: one picture layer, no labels. Like the
+ * Plan IGN style it gets the France mask, the route and the overlays added on
+ * top once it has loaded (see PlanView.svelte).
+ *
+ * Returns
+ * -------
+ * StyleSpecification
+ *     A MapLibre style object.
+ */
+export function aerialStyle(): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      aerial: {
+        type: "raster",
+        tiles: [AERIAL_TILES],
+        tileSize: 256,
+        minzoom: 0,
+        maxzoom: 19,
+      },
+    },
+    layers: [{ id: "aerial", type: "raster", source: "aerial" }],
+  };
+}
 
 /** Credit line the Plan IGN style does not declare by itself. */
 export const IGN_ATTRIBUTION = '<a href="https://geoservices.ign.fr">© IGN</a>';
