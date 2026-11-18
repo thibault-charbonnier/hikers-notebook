@@ -42,6 +42,8 @@ class Library {
   optionsFor = $state.raw<ParcoursSummary | null>(null);
   /** Parcours whose offline window (download, update, remove) is open, if any. */
   offlineFor = $state.raw<ParcoursSummary | null>(null);
+  /** Parcours whose share window is open, with its link (computers), if any. */
+  shareFor = $state.raw<{ name: string; url: string } | null>(null);
   /** False if the storage cannot be reached (for instance without internet). */
   available = $state(true);
 
@@ -64,10 +66,15 @@ class Library {
       Number(this.filters.stages !== null),
   );
 
-  /** Parcours grouped by label, labels in alphabetical order, unlabelled last. */
+  /** The parcours received from someone else (through a share link) that pass the filters, by name. */
+  sharedItems = $derived(
+    this.visibleItems.filter((item) => item.sharedBy).sort((a, b) => a.name.localeCompare(b.name, "fr")),
+  );
+
+  /** My own parcours grouped by label, labels in alphabetical order, unlabelled last. */
   groups = $derived.by((): Group[] => {
     const byName = (a: ParcoursSummary, b: ParcoursSummary) => a.name.localeCompare(b.name, "fr");
-    const shown = this.visibleItems;
+    const shown = this.visibleItems.filter((item) => !item.sharedBy);
     const names = new Set([...this.labels.map((l) => l.name), ...shown.flatMap((i) => i.labels)]);
     const groups: Group[] = [...names]
       .sort((a, b) => a.localeCompare(b, "fr"))
@@ -108,6 +115,7 @@ class Library {
     this.selectedId = null;
     this.optionsFor = null;
     this.offlineFor = null;
+    this.shareFor = null;
     this.available = true;
     this.resetFilters();
   }

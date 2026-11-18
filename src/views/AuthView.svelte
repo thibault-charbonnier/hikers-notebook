@@ -19,6 +19,7 @@
   import { auth, PASSWORD_RULE, passwordProblem } from "../lib/auth.svelte.js";
   import { createMap } from "../lib/map";
   import { homeStyle } from "../lib/mapStyles";
+  import { pendingShare, sharePreview, type SharePreview } from "../lib/sharing";
   import { viewport } from "../lib/viewport.svelte.js";
 
   type Mode = "login" | "signup" | "forgot";
@@ -78,6 +79,13 @@
     if (!outcome.error && outcome.notice) notice = outcome.notice;
     if (!outcome.error) password = "";
   }
+
+  // A parcours was shared with this person: say what, so they know why to sign in.
+  let shared = $state<SharePreview | null>(null);
+  onMount(() => {
+    const token = pendingShare.get();
+    if (token) sharePreview(token).then((preview) => (shared = preview));
+  });
 
   // ----- Background map and movable card -----
 
@@ -144,6 +152,11 @@
     </header>
 
     <div class="body">
+      {#if shared && (face === "login" || face === "signup")}
+        <p class="share-banner">
+          Connecte-toi ou crée un compte pour recevoir <b>« {shared.name} »</b>{#if shared.sharedBy}, partagé par {shared.sharedBy}{/if}.
+        </p>
+      {/if}
       {#if face === "login" || face === "signup"}
         <div class="tabs" role="tablist">
           <button type="button" role="tab" aria-selected={face === "login"} class:active={face === "login"} onclick={() => switchTo("login")}>
@@ -315,6 +328,16 @@
     color: var(--muted);
     font-size: 13px;
     line-height: 1.45;
+  }
+
+  .share-banner {
+    margin: 0 0 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
+    line-height: 1.4;
   }
 
   .tabs {

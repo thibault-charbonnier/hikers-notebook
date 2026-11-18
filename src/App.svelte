@@ -7,6 +7,7 @@
   - `#/`                 overview map
   - `#/hike`             planning page (the parcours being planned)
   - `#/hike/<id>`        planning page, opening a saved parcours
+  - `#/shared/<token>`   a share link: makes a copy of the parcours in the account (see sharing.ts)
     (`#/planifier` is the old name of these addresses and still works)
 
   The sidebar is open on the overview and folds away by itself on the planning
@@ -23,6 +24,7 @@
   import SideToggle from "./components/SideToggle.svelte";
   import MessageDialog from "./components/MessageDialog.svelte";
   import OfflineDialog from "./components/OfflineDialog.svelte";
+  import ShareDialog from "./components/ShareDialog.svelte";
   import ParcoursOptionsDialog from "./components/ParcoursOptionsDialog.svelte";
   import { auth } from "./lib/auth.svelte.js";
   import { hike } from "./lib/hike.svelte.js";
@@ -30,21 +32,24 @@
   import { offline } from "./lib/offline.svelte.js";
   import { connection } from "./lib/online.svelte.js";
   import { ensureOverviewPack } from "./lib/overviewPack";
+  import { pendingShare } from "./lib/sharing";
   import { viewport } from "./lib/viewport.svelte.js";
   import AuthView from "./views/AuthView.svelte";
   import HomeView from "./views/HomeView.svelte";
   import PlanView from "./views/PlanView.svelte";
+  import SharedReceiver from "./views/SharedReceiver.svelte";
 
-  type Route = { name: "home" } | { name: "plan"; id: string | null };
+  type Route = { name: "home" } | { name: "plan"; id: string | null } | { name: "shared"; token: string };
 
   /** Read the current view from the URL hash. */
   function readRoute(): Route {
     const [, page, id] = location.hash.split("/");
+    if (page === "shared" && id) return { name: "shared", token: id };
     return page === "hike" || page === "planifier" ? { name: "plan", id: id || null } : { name: "home" };
   }
 
   let route = $state<Route>(readRoute());
-  let sidebarOpen = $state(readRoute().name === "home");
+  let sidebarOpen = $state(readRoute().name !== "plan");
   let sidebarWidth = $state(300);
   let sidebarResizing = $state(false);
 
@@ -55,7 +60,7 @@
     // It jumps instead of sliding, so the new map is created at its final size.
     if (route.name !== previous) {
       sidebarResizing = true;
-      sidebarOpen = route.name === "home";
+      sidebarOpen = route.name !== "plan";
       requestAnimationFrame(() => requestAnimationFrame(() => (sidebarResizing = false)));
     }
   }
@@ -65,6 +70,17 @@
    * has one) the saved maps cannot be shown: the banner says so instead of leaving a blank map.
    */
   const hasWorker = typeof navigator !== "undefined" && Boolean(navigator.serviceWorker?.controller);
+
+  // A share link opened by someone not logged in yet is kept, and used as soon as they are in
+  // (the sign-up may go through an e-mail and a reload of the page, which lose the address).
+  $effect(() => {
+    if (route.name === "shared") pendingShare.set(route.token);
+  });
+  $effect(() => {
+    if (!auth.user || route.name === "shared") return;
+    const token = pendingShare.get();
+    if (token) location.hash = `#/shared/${token}`;
+  });
 
   // Load the saved parcours when someone logs in (and again when the network comes
   // or goes: offline, only the downloaded parcours are listed); forget them when
@@ -108,13 +124,16 @@
   {/if}
   <div class="layout" class:with-banner={!connection.online}>
     {#if !viewport.phone}
-      <Sidebar route={route.name} open={sidebarOpen} bind:width={sidebarWidth} bind:resizing={sidebarResizing} />
+      <Sidebar route={route.name === "plan" ? "plan" : "home"} open={sidebarOpen} bind:width={sidebarWidth} bind:resizing={sidebarResizing} />
     {/if}
     <main>
       {#if route.name === "plan"}
         <PlanView id={route.id} />
       {:else}
         <HomeView />
+      {/if}
+      {#if route.name === "shared"}
+        <SharedReceiver token={route.token} />
       {/if}
       {#if !viewport.phone}
         <SideToggle
@@ -131,6 +150,9 @@
   {/if}
   {#if library.offlineFor}
     <OfflineDialog item={library.offlineFor} />
+  {/if}
+  {#if library.shareFor}
+    <ShareDialog {...library.shareFor} />
   {/if}
 {/if}
 

@@ -5,6 +5,7 @@
   - the 3D button (dark green while the 3D view is on), then a separator;
   - download for offline use (opens the offline window; green when done);
   - export as a GPX file (works like any download, after a confirmation);
+  - share by a link (see sharing.ts);
   - a separator, then the red bin, which asks before deleting.
 
   Deleting a saved parcours erases it for good and goes back to the overview.
@@ -12,7 +13,7 @@
   while the hike details are open.
 -->
 <script lang="ts">
-  import { exportCurrentGpx, openOfflineWindow, removeParcours } from "../lib/actions";
+  import { exportCurrentGpx, openOfflineWindow, removeParcours, shareParcours } from "../lib/actions";
   import { feedback } from "../lib/feedback.svelte.js";
   import { hike } from "../lib/hike.svelte.js";
   import { offline } from "../lib/offline.svelte.js";
@@ -24,6 +25,18 @@
   let confirmingGpx = $state(false);
 
   const canDelete = $derived(hike.isSaved || hike.points.length > 0);
+
+  /** The link gives the saved version of the parcours, so it must be saved and unchanged. */
+  function share(): void {
+    if (!hike.isSaved || hike.dirty) {
+      feedback.info(
+        "Enregistre d'abord",
+        "Enregistre le parcours, sans modification en attente, avant de le partager : le lien donne la version enregistrée.",
+      );
+      return;
+    }
+    void shareParcours(hike.id, hike.name);
+  }
 
   /** The download saves what is in the database, so the parcours must be saved and unchanged. */
   function openOffline(): void {
@@ -83,6 +96,13 @@
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
       <path d="M14 2v4a2 2 0 0 0 2 2h4" /><path d="M12 18v-6" /><path d="m9 15 3 3 3-3" />
+    </svg>
+  </button>
+  <button type="button" aria-label="Partager le parcours" title="Partager le parcours" onclick={share}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
     </svg>
   </button>
 

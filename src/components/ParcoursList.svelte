@@ -4,12 +4,17 @@
   distance, ascent, number of stages (when more than one) and whether it has
   been done. A button above opens the filters; a cog at the right of each
   parcours opens its options (see ParcoursOptionsDialog.svelte).
+
+  Below, under a dashed line, the "Parcours partagés": the parcours received
+  through a share link (see sharing.ts), by name, with the first name of the
+  person who shared them.
 -->
 <script lang="ts">
   import { formatDate, formatDistance, formatMeters } from "../lib/format";
   import { library } from "../lib/library.svelte.js";
   import { offline } from "../lib/offline.svelte.js";
   import { connection } from "../lib/online.svelte.js";
+  import type { ParcoursSummary } from "../lib/parcours";
   import ParcoursFilters from "./ParcoursFilters.svelte";
   import StageBar from "./StageBar.svelte";
   import TypeIcon from "./TypeIcon.svelte";
@@ -18,6 +23,50 @@
 
   let filtersOpen = $state(false);
 </script>
+
+{#snippet row(item: ParcoursSummary)}
+    {@const stages = item.stages ?? 1}
+    <li>
+      <button type="button" class="pick" class:selected={library.selectedId === item.id} onclick={() => onpick(item.id)}>
+        <span class="line" style:background={item.color}></span>
+        <span class="text">
+          <b>{item.name}</b>
+          <small>
+            <TypeIcon type={item.type} size={13} />
+            {formatDistance(item.stats.distance)} · D+ {formatMeters(item.stats.ascent)}
+            {#if stages > 1}
+              <span class="stages" title="{stages} étapes">
+                <span class="mini"><StageBar lengths={Array.from({ length: stages }, () => 1)} color={item.color} height={5} /></span>
+                {stages}
+              </span>
+            {/if}
+            {#if item.sharedBy}<span class="by">de {item.sharedBy}</span>{/if}
+          {#if connection.online && offline.has(item.id)}
+              <span class="saved" title="Disponible hors réseau">⇩ hors réseau</span>
+            {/if}
+            {#if item.done}
+              <span class="done">✓ {item.doneOn ? formatDate(item.doneOn) : "Réalisé"}</span>
+              {#if item.rating != null}<span class="stars">★ {item.rating.toLocaleString("fr-FR")}</span>{/if}
+            {/if}
+          </small>
+        </span>
+      </button>
+      <button
+        type="button"
+        class="gear"
+        aria-label="Options de {item.name}"
+        title="Options"
+        onclick={() => (library.optionsFor = item)}
+      >
+        {#if offline.needsUpdate(item.id)}<span class="dot" role="img" aria-label="Mise à jour disponible"></span>{/if}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
+    </li>
+{/snippet}
 
 <div class="list">
   <div class="title-row">
@@ -73,50 +122,22 @@
         </summary>
         <ul>
           {#each group.items as item (item.id)}
-            {@const stages = item.stages ?? 1}
-            <li>
-              <button type="button" class="pick" class:selected={library.selectedId === item.id} onclick={() => onpick(item.id)}>
-                <span class="line" style:background={item.color}></span>
-                <span class="text">
-                  <b>{item.name}</b>
-                  <small>
-                    <TypeIcon type={item.type} size={13} />
-                    {formatDistance(item.stats.distance)} · D+ {formatMeters(item.stats.ascent)}
-                    {#if stages > 1}
-                      <span class="stages" title="{stages} étapes">
-                        <span class="mini"><StageBar lengths={Array.from({ length: stages }, () => 1)} color={item.color} height={5} /></span>
-                        {stages}
-                      </span>
-                    {/if}
-                    {#if connection.online && offline.has(item.id)}
-                      <span class="saved" title="Disponible hors réseau">⇩ hors réseau</span>
-                    {/if}
-                    {#if item.done}
-                      <span class="done">✓ {item.doneOn ? formatDate(item.doneOn) : "Réalisé"}</span>
-                      {#if item.rating != null}<span class="stars">★ {item.rating.toLocaleString("fr-FR")}</span>{/if}
-                    {/if}
-                  </small>
-                </span>
-              </button>
-              <button
-                type="button"
-                class="gear"
-                aria-label="Options de {item.name}"
-                title="Options"
-                onclick={() => (library.optionsFor = item)}
-              >
-                {#if offline.needsUpdate(item.id)}<span class="dot" role="img" aria-label="Mise à jour disponible"></span>{/if}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
-              </button>
-            </li>
+            {@render row(item)}
           {/each}
         </ul>
       </details>
     {/each}
+
+    {#if library.sharedItems.length > 0}
+      <section class="shared" aria-label="Parcours partagés">
+        <h3>Parcours partagés</h3>
+        <ul>
+          {#each library.sharedItems as item (item.id)}
+            {@render row(item)}
+          {/each}
+        </ul>
+      </section>
+    {/if}
   {/if}
 </div>
 
@@ -370,6 +391,27 @@
   .mini {
     display: inline-block;
     width: 28px;
+  }
+
+  .by {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* The parcours received through a link: set apart under a dashed line. */
+  .shared {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 2px dashed var(--border);
+  }
+
+  .shared h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
   .done,

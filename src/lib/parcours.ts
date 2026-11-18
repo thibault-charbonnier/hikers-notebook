@@ -123,6 +123,8 @@ export interface ParcoursFile {
   segments: StoredSegment[];
   /** Points of interest and comments. Files saved before they existed lack it. */
   pois?: StoredPoi[];
+  /** First name of the person who shared it, for a copy received through a link; ``null`` for one's own parcours. */
+  sharedBy?: string | null;
 }
 
 /** A parcours without its heavy parts: enough for lists and the overview map. */

@@ -10,6 +10,7 @@ import { downloadGpx } from "./gpx";
 import { hike } from "./hike.svelte.js";
 import { library } from "./library.svelte.js";
 import { connection } from "./online.svelte.js";
+import { createShareLink, shareUrl } from "./sharing";
 import * as storage from "./storage";
 
 const UNSAVED_QUESTION = "Les modifications non enregistrées seront perdues. Continuer ?";
@@ -113,6 +114,46 @@ export async function exportGpxOf(id: string): Promise<void> {
   } catch (error) {
     feedback.problem("exporter le fichier GPX", error);
   }
+}
+
+/**
+ * Share a saved parcours by a link.
+ *
+ * On a phone the phone's own share sheet opens (messages, mail, social apps...).
+ * On a computer, or if the phone cannot do that, a window shows the link with a
+ * button to copy it.
+ *
+ * Parameters
+ * ----------
+ * id : str
+ *     The saved parcours.
+ * name : str
+ *     Its name, for the message that goes with the link.
+ */
+export async function shareParcours(id: string, name: string): Promise<void> {
+  if (!connection.online) {
+    feedback.info("Hors réseau", "Il faut du réseau pour partager un parcours.");
+    return;
+  }
+  let url: string;
+  try {
+    url = shareUrl(await createShareLink(id));
+  } catch (error) {
+    feedback.problem("créer le lien de partage", error);
+    return;
+  }
+
+  const touchDevice = matchMedia("(pointer: coarse)").matches;
+  if (touchDevice && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: name, text: `Un parcours de randonnée : « ${name} »`, url });
+      return;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return; // the sheet was closed
+      // any other failure: fall back on the window below
+    }
+  }
+  library.shareFor = { name, url };
 }
 
 /**

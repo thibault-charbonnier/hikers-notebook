@@ -24,7 +24,7 @@ import { supabase } from "./supabase";
 
 /** The columns of the ``parcours`` table, without the heavy ``data`` column. */
 const SUMMARY_COLUMNS =
-  "id, name, description, type, done, done_on, done_comment, rating, labels, color, stages, created_at, updated_at, stats, preview, closed";
+  "id, name, description, type, done, done_on, done_comment, rating, labels, color, stages, created_at, updated_at, stats, preview, closed, shared_by";
 
 /** A row of the ``parcours`` table, as Supabase returns it. */
 interface ParcoursRow {
@@ -44,6 +44,7 @@ interface ParcoursRow {
   stats: Stats;
   preview: string;
   closed: boolean;
+  shared_by: string | null;
   data?: Pick<ParcoursFile, "waypoints" | "segments" | "pois">;
 }
 
@@ -81,6 +82,7 @@ function toSummary(row: ParcoursRow): ParcoursSummary {
     stats: row.stats,
     preview: row.preview,
     closed: row.closed,
+    sharedBy: row.shared_by,
   };
 }
 
