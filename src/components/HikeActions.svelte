@@ -1,6 +1,7 @@
 <!--
   Small bar of actions on the parcours, at the bottom left of the planning map,
-  above the scale (on a phone too, above the closed sheet). From top to bottom:
+  above the scale (on a phone it is the lower part of the single side bar, see
+  MapSideBar.svelte). From top to bottom:
 
   - the 3D button (dark green while the 3D view is on), then a separator;
   - download for offline use (opens the offline window; green when done);
@@ -253,11 +254,20 @@
     color: #e3b4ae;
   }
 
-  /* Phone: bottom left, above the map scale and the closed sheet. */
+  /* Phone: the buttons are part of the single side bar (see MapSideBar.svelte). */
   @media (max-width: 720px) {
     .actions {
-      left: 8px;
-      bottom: 104px;
+      display: contents;
+    }
+
+    button {
+      width: 40px;
+      height: var(--btn, 44px);
+    }
+
+    hr {
+      width: 24px;
+      margin: 1px auto;
     }
   }
 </style>

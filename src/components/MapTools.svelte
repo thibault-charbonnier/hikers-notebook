@@ -1,7 +1,7 @@
 <!--
   Floating tool palette on the map: move the map (hand), place points
   (target), undo and redo. Right-clicking the map always places a point,
-  whatever the tool. On a phone it hides while the hike details are open.
+  whatever the tool. On a phone it joins the actions in one bar (MapSideBar.svelte).
 -->
 <script lang="ts">
   import { hike } from "../lib/hike.svelte.js";
@@ -27,7 +27,6 @@
   class="tools"
   role="toolbar"
   aria-label="Outils de la carte"
-  style:--top-bar-bottom="{ui.topBarBottom}px"
 >
   <button
     type="button"
@@ -263,11 +262,20 @@
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
 
-  /* Phone: top left, right under the hike bar, whatever its height (see TopBar.svelte). */
+  /* Phone: the buttons are part of the single side bar (see MapSideBar.svelte). */
   @media (max-width: 720px) {
     .tools {
-      top: calc(var(--top-bar-bottom, 190px) + 8px);
-      left: 8px;
+      display: contents;
+    }
+
+    button {
+      width: 40px;
+      height: var(--btn, 44px);
+    }
+
+    hr {
+      width: 24px;
+      margin: 1px auto;
     }
 
     .flyout {

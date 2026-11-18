@@ -1,14 +1,15 @@
 /**
  * The information card shown on the overview map when a parcours is hovered
- * or selected: name, type and stages, three figures (distance, ascent,
- * descent), whether it has been done (with the date and the rating), and a
- * button to open it.
+ * or selected, in at most four lines: the name (colour dot on the left, icon of
+ * the type on the right); the stages (a tiny bar and their count), only when
+ * there are several; three figures (distance, ascent, descent); and a button
+ * to open it.
  *
  * It is built with DOM calls (never from user text as HTML), so names typed by
  * the user cannot inject markup. The only HTML used is fixed drawings.
  */
 
-import { formatDate, formatDistance, formatMeters } from "./format";
+import { formatDistance, formatMeters } from "./format";
 import { PARCOURS_TYPES, STAGE_PATTERN_COUNT } from "./parcours";
 import type { ParcoursSummary } from "./parcours";
 import { TYPE_ICON_MARKUP } from "./typeIcons";
@@ -58,28 +59,28 @@ export function buildParcoursCard(item: ParcoursSummary, onOpen?: () => void): H
   const card = element("div", "card");
   card.style.setProperty("--stage-color", item.color);
 
-  // Name, and the type as a small pill with its icon.
+  // Line 1: colour dot, name, and (far right) the icon of the type, with no text.
+  const typeLabel = PARCOURS_TYPES.find((t) => t.id === item.type)?.label ?? "";
   const title = element("div", "card-title");
   const swatch = element("span", "card-swatch");
   swatch.style.background = item.color;
-  title.append(swatch, element("strong", "", item.name));
+  const type = icon(TYPE_ICON_MARKUP[item.type], 18);
+  type.classList.add("card-type");
+  type.title = typeLabel;
+  title.append(swatch, element("strong", "", item.name), type);
   card.append(title);
 
-  // Type (pill with its icon) and, when there are several, the stages (tiny bar and count).
-  const typeLabel = PARCOURS_TYPES.find((t) => t.id === item.type)?.label ?? "";
-  const meta = element("div", "card-meta");
-  const type = element("span", "card-type");
-  type.append(icon(TYPE_ICON_MARKUP[item.type], 13), element("span", "", typeLabel));
-  meta.append(type);
+  // Line 2, only for several days: the tiny stage bar and the count.
   const stages = item.stages ?? 1;
   if (stages > 1) {
+    const meta = element("div", "card-meta");
     const bar = element("span", "card-stagebar");
     for (let i = 0; i < stages; i++) bar.append(element("span", `piece p${i % STAGE_PATTERN_COUNT}`));
     meta.append(bar, element("b", "card-stagecount", `${stages} étapes`));
+    card.append(meta);
   }
-  card.append(meta);
 
-  // Distance, ascent and descent: three plain figures.
+  // Line 3: distance, ascent and descent.
   const figures = element("div", "card-figures");
   figures.append(
     figure("distance", formatDistance(item.stats.distance), "Distance"),
@@ -87,20 +88,6 @@ export function buildParcoursCard(item: ParcoursSummary, onOpen?: () => void): H
     figure("down", formatMeters(item.stats.descent), "Dénivelé −", '<path d="M12 20 2 4h20z" fill="currentColor" />'),
   );
   card.append(figures);
-
-  // Done or not (with the date), and the rating.
-  const status = element("div", "card-status-row");
-  status.append(
-    element(
-      "span",
-      item.done ? "card-chip done" : "card-chip",
-      item.done ? `✓ Réalisé${item.doneOn ? ` le ${formatDate(item.doneOn)}` : ""}` : "À faire",
-    ),
-  );
-  if (item.done && item.rating != null) {
-    status.append(element("span", "card-rating", `★ ${item.rating.toLocaleString("fr-FR")} / 5`));
-  }
-  card.append(status);
 
   if (onOpen) {
     const button = element("button", "card-open", "Ouvrir") as HTMLButtonElement;

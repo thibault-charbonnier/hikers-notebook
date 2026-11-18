@@ -20,9 +20,8 @@
   import BottomSheet from "../components/BottomSheet.svelte";
   import CommentDialog from "../components/CommentDialog.svelte";
   import DetailsPanel from "../components/DetailsPanel.svelte";
-  import HikeActions from "../components/HikeActions.svelte";
   import LayersButton from "../components/LayersButton.svelte";
-  import MapTools from "../components/MapTools.svelte";
+  import MapSideBar from "../components/MapSideBar.svelte";
   import PoiMarkers from "../components/PoiMarkers.svelte";
   import PointMarkers from "../components/PointMarkers.svelte";
   import ResizeHandle from "../components/ResizeHandle.svelte";
@@ -235,8 +234,7 @@
   <div class="map-area">
     <div class="map" bind:this={container}></div>
     <TopBar />
-    <MapTools />
-    <HikeActions />
+    <MapSideBar />
     <LayersButton />
     <Toast />
     {#if !viewport.phone || hike.tool !== "move"}
