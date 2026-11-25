@@ -15,6 +15,7 @@
  * A 20 km parcours takes roughly 6 to 10 kB.
  */
 
+import type { Drive } from "./drive";
 import { simplifyLine } from "./geo";
 import type { LngLat, Segment, Stats } from "./geo";
 import type { StoredPoi } from "./poi";
@@ -125,6 +126,8 @@ export interface ParcoursFile {
   pois?: StoredPoi[];
   /** First name of the person who shared it, for a copy received through a link; ``null`` for one's own parcours. */
   sharedBy?: string | null;
+  /** Time by car from the home of whoever looks at it to its start (see drive.ts); ``null`` while unknown. */
+  drive?: Drive | null;
 }
 
 /** A parcours without its heavy parts: enough for lists and the overview map. */

@@ -6,3 +6,6 @@ __pycache__/
 
 # Local tooling of the editor/assistant
 .claude/
+
+# Downloads cached by the data scripts in tools/
+tools/.cache/

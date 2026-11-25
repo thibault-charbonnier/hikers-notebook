@@ -20,6 +20,7 @@
   screen (see AuthView.svelte) takes the whole window.
 -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import SideToggle from "./components/SideToggle.svelte";
   import MessageDialog from "./components/MessageDialog.svelte";
@@ -100,6 +101,14 @@
       void offline.load(null);
       library.reset();
     }
+  });
+
+  // The time by car from home, kept with each parcours: filled in quietly, for the parcours that lack it
+  // (new, shared with me, or after the home address changed).
+  $effect(() => {
+    const home = auth.home;
+    void library.items;
+    if (home && connection.online) untrack(() => void library.fillDrives(home));
   });
 </script>
 

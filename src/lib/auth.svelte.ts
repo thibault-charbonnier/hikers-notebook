@@ -13,6 +13,7 @@
  */
 
 import type { AuthError, Session, User } from "@supabase/supabase-js";
+import type { HomeAddress } from "./drive";
 import { connection } from "./online.svelte.js";
 import { AUTH_STORAGE_KEY, supabase } from "./supabase";
 
@@ -105,6 +106,15 @@ function readSavedSession(): Session | null {
 /** Result of an action: an error message, or nothing if it worked. */
 export type Outcome = { error: string; notice?: undefined } | { error: null; notice?: string };
 
+/** The home address kept in the account, if it looks right. */
+function readHome(value: unknown): HomeAddress | null {
+  const home = value as Partial<HomeAddress> | null | undefined;
+  if (home && typeof home.label === "string" && typeof home.lon === "number" && typeof home.lat === "number") {
+    return { label: home.label, lon: home.lon, lat: home.lat };
+  }
+  return null;
+}
+
 class Auth {
   /** False until the browser has answered "is there a saved session?". */
   ready = $state(false);
@@ -116,6 +126,8 @@ class Auth {
   firstName = $derived<string>(String(this.user?.user_metadata?.first_name ?? ""));
   lastName = $derived<string>(String(this.user?.user_metadata?.last_name ?? ""));
   email = $derived<string>(this.user?.email ?? "");
+  /** The home address chosen in the profile (for the time by car), or ``null``. */
+  home = $derived<HomeAddress | null>(readHome(this.user?.user_metadata?.home));
 
   /** "First Last", or the part of the e-mail before "@" if no name was given. */
   displayName = $derived<string>(
@@ -194,6 +206,12 @@ class Auth {
     const { error } = await supabase.auth.updateUser({
       data: { first_name: firstName.trim(), last_name: lastName.trim() },
     });
+    return error ? { error: explain(error) } : { error: null };
+  }
+
+  /** Save the home address (picked from the suggestions), or remove it with ``null``. */
+  async changeHome(home: HomeAddress | null): Promise<Outcome> {
+    const { error } = await supabase.auth.updateUser({ data: { home } });
     return error ? { error: explain(error) } : { error: null };
   }
 

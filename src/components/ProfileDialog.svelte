@@ -1,9 +1,12 @@
 <!--
-  "Modifier le profil": change the name or the password, or delete the account.
+  "Modifier le profil": change the name, the home address (for the time by car
+  to the parcours), or the password, or delete the account.
   Deleting asks for a confirmation first, since everything saved goes with it.
 -->
 <script lang="ts">
   import { auth, PASSWORD_RULE, passwordProblem } from "../lib/auth.svelte.js";
+  import type { HomeAddress } from "../lib/drive";
+  import AddressField from "./AddressField.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -12,6 +15,9 @@
   let lastName = $state(auth.lastName);
   let password = $state("");
 
+  /** The address picked from the suggestions, ``null`` while none is (or it is being retyped). */
+  let pickedHome = $state<HomeAddress | null>(auth.home);
+  let homeMessage = $state<{ ok: boolean; text: string } | null>(null);
   let nameMessage = $state<{ ok: boolean; text: string } | null>(null);
   let passwordMessage = $state<{ ok: boolean; text: string } | null>(null);
   let deleteError = $state<string | null>(null);
@@ -28,6 +34,28 @@
     const outcome = await auth.changeName(firstName, lastName);
     busy = false;
     nameMessage = outcome.error ? { ok: false, text: outcome.error } : { ok: true, text: "Nom enregistré." };
+  }
+
+  async function saveHome(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    if (!pickedHome) {
+      homeMessage = { ok: false, text: "Choisis une adresse dans la liste qui s'affiche quand tu tapes." };
+      return;
+    }
+    busy = true;
+    const outcome = await auth.changeHome(pickedHome);
+    busy = false;
+    homeMessage = outcome.error ? { ok: false, text: outcome.error } : { ok: true, text: "Adresse enregistrée. Les temps de trajet se calculent." };
+  }
+
+  async function removeHome(): Promise<void> {
+    busy = true;
+    const outcome = await auth.changeHome(null);
+    busy = false;
+    if (!outcome.error) {
+      pickedHome = null;
+      homeMessage = { ok: true, text: "Adresse supprimée." };
+    } else homeMessage = { ok: false, text: outcome.error };
   }
 
   async function savePassword(event: SubmitEvent): Promise<void> {
@@ -86,6 +114,22 @@
       </label>
       {#if nameMessage}<p class="message" class:error={!nameMessage.ok}>{nameMessage.text}</p>{/if}
       <button type="submit" class="save" disabled={busy}>Enregistrer le nom</button>
+    </form>
+
+    <form onsubmit={saveHome} novalidate>
+      <h3>Adresse du domicile</h3>
+      <p>
+        Sert à calculer le temps de trajet en voiture jusqu'aux parcours. Elle reste dans ton compte ; seule sa position est
+        envoyée au service de calcul de l'IGN.
+      </p>
+      {#key auth.home?.label}
+        <AddressField initial={auth.home} onpick={(address) => (pickedHome = address)} />
+      {/key}
+      {#if homeMessage}<p class="message" class:error={!homeMessage.ok}>{homeMessage.text}</p>{/if}
+      <button type="submit" class="save" disabled={busy || !pickedHome || pickedHome.label === auth.home?.label}>Enregistrer l'adresse</button>
+      {#if auth.home}
+        <button type="button" class="link" disabled={busy} onclick={removeHome}>Supprimer l'adresse</button>
+      {/if}
     </form>
 
     <form onsubmit={savePassword} novalidate>
@@ -266,6 +310,18 @@
     border: none;
     background: var(--accent);
     color: #fff;
+  }
+
+  .link {
+    align-self: flex-start;
+    padding: 2px 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .delete {

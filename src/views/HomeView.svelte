@@ -7,7 +7,16 @@
   pick it in the side menu) to select it and open it.
 
   The zoom buttons are at the bottom left; the account button (see
-  AccountMenu.svelte) is at the top right, on the map.
+  AccountMenu.svelte) is at the top right, on the map. The "Explorer" button
+  (bottom right, see ExploreFilters.svelte) opens the window that chooses what
+  else the map shows: GR trails, regional parks, massifs, summits and passes
+  (see exploreLayers.ts). Clicking one of them shows a small card.
+
+  The search box (top left, see SearchBar.svelte) finds a summit, a massif, a
+  GR trail or a park, forgiving spelling mistakes; the place found is
+  highlighted and the rest fades. A small compass (top right, next to the
+  account button) shows where the top of the map points to; the map turns with
+  two fingers on a phone.
 
   On a phone the side menu is a sheet at the bottom (the list of parcours) and
   a round "+" button at the bottom right starts a new parcours; a band with the
@@ -16,12 +25,19 @@
 -->
 <script lang="ts">
   import { Popup, type Map as MapLibreMap } from "maplibre-gl";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { goToParcours, prepareNewPlanning } from "../lib/actions";
   import AccountMenu from "../components/AccountMenu.svelte";
+  import { auth } from "../lib/auth.svelte.js";
   import BottomSheet from "../components/BottomSheet.svelte";
+  import ExploreFilters from "../components/ExploreFilters.svelte";
+  import MapCompass from "../components/MapCompass.svelte";
+  import SearchBar from "../components/SearchBar.svelte";
   import ParcoursList from "../components/ParcoursList.svelte";
-  import { addParcoursLayers, boundsOf, HIT_LAYER, routeOf, updateParcours } from "../lib/homeRoutes";
+  import { explore } from "../lib/explore.svelte.js";
+  import { exploreCardAt } from "../lib/exploreCard";
+  import { addExploreLayers, boundsOfGeometry, setHighlight, syncExplore } from "../lib/exploreLayers";
+  import { addParcoursLayers, boundsOf, HIT_LAYER, routeOf, setParcoursVisible, updateParcours } from "../lib/homeRoutes";
   import { library } from "../lib/library.svelte.js";
   import { createMap, fitBoundsAndSettle, keepPopupInView } from "../lib/map";
   import { homeStyle } from "../lib/mapStyles";
@@ -34,6 +50,7 @@
 
   let hoverPopup: Popup | null = null;
   let pinnedPopup: Popup | null = null;
+  let explorePopup: Popup | null = null;
 
   function hideHover(): void {
     hoverPopup?.remove();
@@ -42,9 +59,11 @@
 
   onMount(() => {
     // Zoom buttons at the bottom left, next to the side menu; none on a phone (two fingers).
-    const instance = createMap(container, { style: homeStyle(), maxZoom: 9 }, viewport.phone ? null : "bottom-left");
+    // Zoomed in far enough to read the names of the summits.
+    const instance = createMap(container, { style: homeStyle(), maxZoom: 12 }, viewport.phone ? null : "bottom-left");
 
     instance.on("load", () => {
+      addExploreLayers(instance);
       addParcoursLayers(instance);
       ready = true;
     });
@@ -68,16 +87,24 @@
       const id = event.features?.[0]?.properties?.id;
       if (id) library.selectedId = id;
     });
-    // A click on empty map clears the selection.
+    // A click on empty map clears the selection; on a summit, a trail, a park or a massif it shows a card.
     instance.on("click", (event) => {
-      if (instance.queryRenderedFeatures(event.point, { layers: [HIT_LAYER] }).length === 0) {
-        library.selectedId = null;
-      }
+      explorePopup?.remove();
+      explorePopup = null;
+      if (instance.queryRenderedFeatures(event.point, { layers: [HIT_LAYER] }).length > 0) return;
+      library.selectedId = null;
+      const card = exploreCardAt(instance, event.point, event.lngLat, auth.home);
+      if (!card) return;
+      explorePopup = new Popup({ closeButton: true, closeOnClick: false, offset: 10, maxWidth: "260px", className: "explore-popup" })
+        .setLngLat(card.lngLat)
+        .setDOMContent(card.content)
+        .addTo(instance);
     });
 
     map = instance;
     return () => {
       hideHover();
+      explorePopup?.remove();
       pinnedPopup?.remove();
       instance.remove();
     };
@@ -86,6 +113,37 @@
   // Draw the saved parcours whenever the list changes.
   $effect(() => {
     if (map && ready) updateParcours(map, library.visibleItems);
+  });
+
+  // Show what the Explorer window chose: parcours, GR, parks, massifs, summits.
+  $effect(() => {
+    if (!map || !ready) return;
+    syncExplore(map, explore.choices);
+    setParcoursVisible(map, explore.choices.parcours);
+  });
+
+  // Show the place picked in the search box (a summit, a massif, a GR trail, a park): highlighted, the rest faded.
+  $effect(() => {
+    const place = explore.highlight;
+    const instance = map;
+    if (!instance || !ready) return;
+    untrack(() => {
+      hideHover();
+      explorePopup?.remove();
+      explorePopup = null;
+      setHighlight(instance, place ? { geometry: place.geometry, label: place.label } : null);
+      if (!place) return;
+      library.selectedId = null;
+      if (place.kind === "peak") {
+        const [lon, lat] = place.geometry.coordinates as [number, number];
+        instance.flyTo({ center: [lon, lat], zoom: 10.5, duration: 900 });
+      } else {
+        void fitBoundsAndSettle(instance, boundsOfGeometry(place.geometry), {
+          padding: viewport.phone ? { top: 140, bottom: 110, left: 30, right: 30 } : 100,
+          maxZoom: 11,
+        });
+      }
+    });
   });
 
   // Show the selected parcours: zoom to it and pin its card on the route.
@@ -125,7 +183,12 @@
 
 <div class="map" bind:this={container}></div>
 
-<div class="account-corner"><AccountMenu /></div>
+<div class="account-corner">
+  <MapCompass {map} />
+  <AccountMenu />
+</div>
+<SearchBar />
+<ExploreFilters />
 
 {#if viewport.phone}
   <header class="band">
@@ -178,16 +241,24 @@
   }
 
   /* Top right of the map, where the zoom buttons used to be (on a phone: just under the band). */
+  /* Computer: the account button, and the big compass under it. Phone: side by side. */
   .account-corner {
     position: absolute;
     top: 10px;
     right: 10px;
     z-index: 5;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 10px;
   }
 
   @media (max-width: 720px) {
     .account-corner {
       top: 62px;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
     }
   }
 

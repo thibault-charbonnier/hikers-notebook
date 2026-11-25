@@ -9,10 +9,12 @@
 -->
 <script lang="ts">
   import { saveHike } from "../lib/actions";
+  import { formatDuration } from "../lib/drive";
   import { hike } from "../lib/hike.svelte.js";
   import { library } from "../lib/library.svelte.js";
   import { connection } from "../lib/online.svelte.js";
   import { PARCOURS_TYPES } from "../lib/parcours";
+  import { CAR_MARKUP } from "../lib/parcoursCard";
   import { autosize } from "../lib/autosize";
   import { ui } from "../lib/ui.svelte.js";
   import { viewport } from "../lib/viewport.svelte.js";
@@ -47,6 +49,8 @@
   });
 
   const canSave = $derived(hike.points.length >= 2 && !hike.loading && hike.dirty && !saving && connection.online);
+  /** Time by car from home to the start, once the parcours is saved and the time known. */
+  const drive = $derived(hike.isSaved ? library.items.find((item) => item.id === hike.id)?.drive : null);
   const status = $derived(hike.dirty ? "Modifications non enregistrées" : hike.isSaved ? "✓ Enregistré" : "");
 
   /** Make the name field as tall as its text: one line, or two when the name is long. */
@@ -165,6 +169,14 @@
       {/each}
     </ul>
     <LabelPicker />
+    {#if drive}
+      <span class="car" title="{drive.km.toLocaleString('fr-FR')} km depuis ton domicile, sans circulation">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{@html CAR_MARKUP}</svg>
+        <b>{formatDuration(drive.minutes)}</b>
+        {#if !viewport.phone}<span>depuis chez toi</span>{/if}
+      </span>
+    {/if}
     <span class="status" class:unsaved={hike.dirty} class:saved={!hike.dirty && hike.isSaved}>{status}</span>
     <button type="button" class="toggle" aria-expanded={detailsOpen} onclick={() => (detailsOpen = !detailsOpen)}>
       Détails
@@ -418,6 +430,30 @@
 
   .labels li button:hover {
     background: rgba(0, 0, 0, 0.08);
+  }
+
+  /* Time by car from home: a clear pill, right after the labels. */
+  .car {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .car b {
+    font-family: var(--font-title);
+    font-size: 14px;
+  }
+
+  .car span {
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .status {

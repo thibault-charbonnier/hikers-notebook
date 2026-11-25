@@ -167,11 +167,70 @@ export function planPopupInsets(): Insets {
   return phone ? { top: 190, bottom: 110, left: 8, right: 8 } : { top: 16, bottom: 56, left: 76, right: 16 };
 }
 
+/** Degrees the map turns per pixel of a right-click drag (MapLibre's own is 0.8, which is far too much). */
+const DEGREES_PER_PIXEL = 0.2;
+/** A right-click that moves less than this many pixels is a plain click (it places a point on the planning map). */
+const DRAG_THRESHOLD = 4;
+
 /**
- * Create a map framed on France, without rotation or tilt, with zoom buttons.
+ * Turn the map with a right-click drag, gently.
  *
- * Rotation and tilt are disabled because they are not needed for planning
- * and make touch gestures harder on a phone. The zoom-out limit follows the
+ * MapLibre's own right-click drag turns the map 0.8 degrees per pixel, so a
+ * small gesture makes a full circle. This one turns it 0.2 degrees per pixel. It
+ * fires the same ``rotatestart`` / ``rotate`` / ``rotateend`` events, so the
+ * rest of the app does not notice the difference. The browser's right-click menu
+ * is never shown on a map.
+ *
+ * Parameters
+ * ----------
+ * map : Map
+ *     The map.
+ * container : HTMLElement
+ *     The element it is drawn into.
+ */
+function enableGentleRotation(map: MapLibreMap, container: HTMLElement): void {
+  let start: { x: number; bearing: number } | null = null;
+  let turning = false;
+
+  const onDown = (event: MouseEvent): void => {
+    if (event.button === 2) start = { x: event.clientX, bearing: map.getBearing() };
+  };
+  const onMove = (event: MouseEvent): void => {
+    if (!start) return;
+    const moved = event.clientX - start.x;
+    if (!turning && Math.abs(moved) < DRAG_THRESHOLD) return;
+    if (!turning) {
+      turning = true;
+      map.fire("rotatestart", { originalEvent: event });
+    }
+    map.setBearing(start.bearing + moved * DEGREES_PER_PIXEL);
+  };
+  const onUp = (event: MouseEvent): void => {
+    if (event.button !== 2 || !start) return;
+    start = null;
+    if (turning) {
+      turning = false;
+      map.fire("rotateend", { originalEvent: event });
+    }
+  };
+  const noMenu = (event: Event): void => event.preventDefault();
+
+  container.addEventListener("mousedown", onDown);
+  container.addEventListener("contextmenu", noMenu);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+  map.once("remove", () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  });
+}
+
+/**
+ * Create a map framed on France, without tilt, with zoom buttons.
+ *
+ * Tilt is disabled (not needed for planning; the 3D view turns it on). Turning
+ * the map is allowed: two fingers on a phone, right-click drag with a mouse
+ * (see ``enableGentleRotation`` and MapCompass.svelte). The zoom-out limit follows the
  * window size, so the "-" button greys out exactly when the limit is reached.
  *
  * Parameters
@@ -196,7 +255,7 @@ export function createMap(
   zoomButtons: ControlPosition | null = "top-right",
 ): MapLibreMap {
   const map = new MapLibreMap({
-    dragRotate: false,
+    dragRotate: false, // the right-click drag that turns the map is our own, gentler one (see enableGentleRotation)
     pitchWithRotate: false,
     touchPitch: false,
     bounds: FRANCE_BOUNDS,
@@ -205,7 +264,8 @@ export function createMap(
     ...options,
     container,
   });
-  map.touchZoomRotate.disableRotation();
+  // Two fingers zoom AND turn the map (on a phone); the compass puts north back on top.
+  enableGentleRotation(map, container);
   if (zoomButtons) map.addControl(new NavigationControl({ showCompass: false }), zoomButtons);
 
   const updateMinZoom = () => {

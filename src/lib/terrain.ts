@@ -12,7 +12,7 @@
  * means changing the constants below.
  */
 
-import { NavigationControl, type Map as MapLibreMap } from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 
 const DEM_SOURCE = "dem";
 /** Address of the altitude tiles ({z}, {x}, {y} are the zoom, column and row of a tile). */
@@ -52,8 +52,7 @@ export function enableTerrain(map: MapLibreMap, animate = true): void {
   }
   map.setTerrain({ source: DEM_SOURCE, exaggeration: EXAGGERATION });
 
-  // Rotating and tilting are off in 2D (they only get in the way when planning).
-  map.dragRotate.enable();
+  // Tilting is only on in 3D; turning the map works the same in 2D (see createMap).
   map.touchPitch.enable();
   map.touchZoomRotate.enableRotation();
   // Moving the camera here would cut short any move already under way (such as the framing of the
@@ -61,16 +60,11 @@ export function enableTerrain(map: MapLibreMap, animate = true): void {
   if (Math.abs(map.getPitch() - TILT_DEGREES) > 1) map.easeTo({ pitch: TILT_DEGREES, duration: animate ? 800 : 0 });
 }
 
-/** Turn the 3D view off: flat map again, facing north. */
+/** Turn the 3D view off: flat map again (still free to be turned). */
 export function disableTerrain(map: MapLibreMap): void {
   map.setTerrain(null);
-  map.dragRotate.disable();
   map.touchPitch.disable();
-  map.touchZoomRotate.disableRotation();
-  map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+  // Turning the map stays possible in 2D, so the direction the person chose is kept.
+  map.easeTo({ pitch: 0, duration: 600 });
 }
 
-/** The compass button, shown in 3D: it shows where north is, and a click puts the map back facing north. */
-export function createCompass(): NavigationControl {
-  return new NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
-}

@@ -117,6 +117,23 @@ export function updateParcours(map: MapLibreMap, items: ParcoursSummary[]): void
 }
 
 /**
+ * Show or hide every layer of the saved parcours (the Explorer window has a switch for them).
+ *
+ * Parameters
+ * ----------
+ * map : Map
+ *     A map on which ``addParcoursLayers`` was called.
+ * visible : bool
+ *     True to show them, false to hide them.
+ */
+export function setParcoursVisible(map: MapLibreMap, visible: boolean): void {
+  const ids = ["parcours-casing", ...PARCOURS_TYPES.map((info) => `parcours-${info.id}`), "parcours-starts", HIT_LAYER];
+  for (const id of ids) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+  }
+}
+
+/**
  * Compute the bounding box of a parcours.
  *
  * Parameters

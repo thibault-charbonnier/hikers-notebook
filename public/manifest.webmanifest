@@ -1,6 +1,6 @@
 {
   "name": "Hiker's Notebook",
-  "short_name": "Notebook",
+  "short_name": "Hiker's Notebook",
   "description": "Planifie tes randonnées en France et consulte-les sur ton téléphone, même sans réseau.",
   "lang": "fr",
   "start_url": "./",

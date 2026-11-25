@@ -19,12 +19,13 @@ import { auth } from "./auth.svelte.js";
 import type { Stats } from "./geo";
 import { connection } from "./online.svelte.js";
 import { getDownload, getMeta, labelsKey, listDownloads, setMeta } from "./offlineStore";
+import type { Drive } from "./drive";
 import type { Label, ParcoursFile, ParcoursSummary, ParcoursType } from "./parcours";
 import { supabase } from "./supabase";
 
 /** The columns of the ``parcours`` table, without the heavy ``data`` column. */
 const SUMMARY_COLUMNS =
-  "id, name, description, type, done, done_on, done_comment, rating, labels, color, stages, created_at, updated_at, stats, preview, closed, shared_by";
+  "id, name, description, type, done, done_on, done_comment, rating, labels, color, stages, created_at, updated_at, stats, preview, closed, shared_by, drive";
 
 /** A row of the ``parcours`` table, as Supabase returns it. */
 interface ParcoursRow {
@@ -45,6 +46,7 @@ interface ParcoursRow {
   preview: string;
   closed: boolean;
   shared_by: string | null;
+  drive: Drive | null;
   data?: Pick<ParcoursFile, "waypoints" | "segments" | "pois">;
 }
 
@@ -83,6 +85,7 @@ function toSummary(row: ParcoursRow): ParcoursSummary {
     preview: row.preview,
     closed: row.closed,
     sharedBy: row.shared_by,
+    drive: row.drive,
   };
 }
 
@@ -150,6 +153,12 @@ export async function saveParcours(file: ParcoursFile): Promise<void> {
     data: { waypoints: file.waypoints, segments: file.segments, pois: file.pois ?? [] },
   };
   const { error } = await supabase.from("parcours").upsert(row, { onConflict: "id" });
+  check(error);
+}
+
+/** Keep the time by car of a parcours (it does not count as a change of the parcours). */
+export async function saveDrive(id: string, drive: Drive | null): Promise<void> {
+  const { error } = await supabase.from("parcours").update({ drive }).eq("id", id);
   check(error);
 }
 

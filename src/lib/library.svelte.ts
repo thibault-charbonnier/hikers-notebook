@@ -5,6 +5,8 @@
  * map). A whole parcours is read from the storage when it is opened.
  */
 
+import { driveFits, driveToStart, type HomeAddress } from "./drive";
+import { decodePolyline } from "./polyline";
 import { PARCOURS_COLORS } from "./parcours";
 import type { Label, ParcoursSummary, ParcoursType } from "./parcours";
 import * as storage from "./storage";
@@ -118,6 +120,52 @@ class Library {
     this.shareFor = null;
     this.available = true;
     this.resetFilters();
+  }
+
+  #fillingDrives = false;
+
+  /**
+   * Work out, for the parcours that lack it, the time by car from home to the start.
+   *
+   * Runs in the background, one parcours at a time (the routing service is free:
+   * no rush), whenever the list or the home address changes. A time is kept with
+   * its parcours, so it is worked out once; it is redone if the home or the start
+   * of the parcours changes. A parcours that cannot be reached by the service
+   * simply keeps no time.
+   *
+   * Parameters
+   * ----------
+   * home : HomeAddress
+   *     The home address of the person.
+   */
+  async fillDrives(home: HomeAddress): Promise<void> {
+    if (this.#fillingDrives) return;
+    this.#fillingDrives = true;
+    const failed = new Set<string>(); // do not retry them in this pass
+    try {
+      for (;;) {
+        const item = this.items.find((i) => {
+          const start = decodePolyline(i.preview)[0];
+          return start && !failed.has(i.id) && !driveFits(i.drive, home, start);
+        });
+        if (!item) return;
+        const drive = await driveToStart(home, decodePolyline(item.preview)[0]);
+        if (!drive) {
+          failed.add(item.id);
+          continue;
+        }
+        try {
+          await storage.saveDrive(item.id, drive);
+        } catch {
+          failed.add(item.id);
+          continue;
+        }
+        this.items = this.items.map((i) => (i.id === item.id ? { ...i, drive } : i));
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    } finally {
+      this.#fillingDrives = false;
+    }
   }
 
   /** Read the parcours and labels from the storage. */

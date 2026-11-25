@@ -21,6 +21,7 @@
   import CommentDialog from "../components/CommentDialog.svelte";
   import DetailsPanel from "../components/DetailsPanel.svelte";
   import LayersButton from "../components/LayersButton.svelte";
+  import MapCompass from "../components/MapCompass.svelte";
   import MapSideBar from "../components/MapSideBar.svelte";
   import PoiMarkers from "../components/PoiMarkers.svelte";
   import PointMarkers from "../components/PointMarkers.svelte";
@@ -35,7 +36,7 @@
   import { showUserLocation } from "../lib/location";
   import { createMap, fitBoundsAndSettle } from "../lib/map";
   import { pinInfo } from "../lib/poi";
-  import { createCompass, disableTerrain, enableTerrain, TILT_DEGREES } from "../lib/terrain";
+  import { disableTerrain, enableTerrain, TILT_DEGREES } from "../lib/terrain";
   import { ui } from "../lib/ui.svelte.js";
   import { viewport } from "../lib/viewport.svelte.js";
   import { addFranceMask, aerialStyle, capPlanIgnZoom, IGN_ATTRIBUTION, IGN_STYLE_URL } from "../lib/mapStyles";
@@ -157,18 +158,6 @@
     });
   });
 
-  // The compass is only useful in 3D, where the map can be turned.
-  $effect(() => {
-    const instance = map;
-    if (!instance || ui.viewMode !== "3d") return;
-    const compass = createCompass();
-    instance.addControl(compass, "top-right");
-    return () => {
-      // Leaving the page removes the whole map, and with it the compass: removing it a second time fails.
-      if (instance.hasControl(compass)) instance.removeControl(compass);
-    };
-  });
-
   // Open the saved parcours named in the address, then frame it on the map.
   $effect(() => {
     const target = id;
@@ -236,6 +225,7 @@
     <TopBar />
     <MapSideBar />
     <LayersButton />
+    <div class="compass-corner" style:--top-bar-bottom="{ui.topBarBottom}px"><MapCompass {map} /></div>
     <Toast />
     {#if !viewport.phone || hike.tool !== "move"}
       <p class="hint">
@@ -303,6 +293,21 @@
 </div>
 
 <style>
+  /* Top right of the map; on a phone just under the hike bar, whatever its height. */
+  .compass-corner {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 4;
+  }
+
+  @media (max-width: 720px) {
+    .compass-corner {
+      top: calc(var(--top-bar-bottom, 190px) + 8px);
+      right: 8px;
+    }
+  }
+
   .plan {
     position: absolute;
     inset: 0;

@@ -33,9 +33,6 @@
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2 L10 7 L5 12" /></svg>
   </button>
-  {#if ahead !== 0}
-    <button type="button" class="today" onclick={() => (ui.weatherDate = todayIso())}>Aujourd'hui</button>
-  {/if}
 </div>
 
 <style>
@@ -90,14 +87,5 @@
   .day span {
     font-size: 12px;
     color: var(--muted);
-  }
-
-  .today {
-    width: auto;
-    padding: 0 10px;
-    font: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--accent);
   }
 </style>
